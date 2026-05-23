@@ -26,13 +26,13 @@ Public Wi-Fi captive portals rely on **DNS hijacking** to redirect your initial 
 
 ### Quick Run (without installing)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-username/captive-portal-rescue/main/captive-portal-rescue.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KnowOneActual/captive-portal-rescue/main/captive-portal-rescue.sh | bash
 ```
 
 ### Direct Download / Install
 1. Clone the repository or download the script:
    ```bash
-   git clone https://github.com/your-username/captive-portal-rescue.git
+   git clone https://github.com/KnowOneActual/captive-portal-rescue.git
    cd captive-portal-rescue
    ```
 2. Make the script executable:
