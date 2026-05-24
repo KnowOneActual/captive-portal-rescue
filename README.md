@@ -36,7 +36,7 @@ Public Wi-Fi captive portals rely on **DNS hijacking** to redirect your initial 
 ### Quick Run (without installing)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KnowOneActual/captive-portal-rescue/main/captive-portal-rescue.sh
+curl -fsSL https://raw.githubusercontent.com/KnowOneActual/captive-portal-rescue/main/captive-portal-rescue.sh | bash
 ```
 
 ### Direct Download / Install

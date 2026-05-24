@@ -49,7 +49,7 @@ detect_vpn_interfaces() {
     fi
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
     # Parse options
     RESTORE_MODE=false
     STATUS_MODE=false
