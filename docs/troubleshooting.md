@@ -101,13 +101,20 @@ If custom DNS configurations or leaks are preventing you from reaching the porta
 # Run the rescue script from the repository root
 ./captive-portal-rescue.sh
 ```
-*This configures your active profile to temporarily use only internal gateway DNS and flushes the resolver cache.*
+*This backs up your active profile's original DNS settings, configures it to temporarily ignore public DNS in favor of the local gateway DNS, and flushes the resolver cache.*
+
+### Check Connection Status
+To inspect the rescue state, profile settings, active VPN interfaces, and network connectivity:
+```bash
+./captive-portal-rescue.sh --status
+```
 
 ### Restore Custom Settings
-Once you are successfully logged in and online, restore your original DNS and connection settings:
+Once you successfully log in and are online, precisely restore your connection's original pre-rescue configuration:
 ```bash
 ./captive-portal-rescue.sh --restore
 ```
+*This reads the state file generated during the rescue, reapplies your original DNS properties, clears the state file, and flushes the resolver cache.*
 
 ### Manual Network Restart
 If the network interfaces or NetworkManager become unstable during configuration changes:

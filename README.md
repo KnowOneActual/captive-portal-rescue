@@ -31,7 +31,7 @@ Public Wi-Fi captive portals rely on **DNS hijacking** to redirect your initial 
 ### Quick Run (without installing)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KnowOneActual/captive-portal-rescue/main/captive-portal-rescue.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/KnowOneActual/captive-portal-rescue/main/captive-portal-rescue.sh)
 ```
 
 ### Direct Download / Install
@@ -64,6 +64,16 @@ captive-rescue
 
 _(Or `./captive-portal-rescue.sh` if not installed globally)._
 
+### 📊 Check Current Status
+
+Check the status of your connection, DNS profile settings, VPN interfaces, and internet connectivity:
+
+```bash
+captive-rescue --status
+```
+
+_(Or `./captive-portal-rescue.sh --status` / `-s`)._
+
 ### 🔄 Restore Custom Settings
 
 Once you successfully log in and are online, restore your original DNS and connection settings:
@@ -72,7 +82,7 @@ Once you successfully log in and are online, restore your original DNS and conne
 captive-rescue --restore
 ```
 
-_(Or `./captive-portal-rescue.sh --restore`)._
+_(Or `./captive-portal-rescue.sh --restore` / `-r`)._
 
 ---
 

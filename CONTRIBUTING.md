@@ -39,16 +39,25 @@ We use [ShellCheck](https://www.shellcheck.net/) to verify script syntax, catch 
 
 ## 🧪 Testing Your Changes
 
-Because captive portals rely on local network setups and OS environment configurations (NetworkManager and systemd-resolved), manual verification is the primary way to test changes.
+We utilize both automated unit tests and manual verification checklists.
 
-1. **Dry-Run & Debugging:**
-   You can set the `DEBUG=true` flag inside `captive-portal-rescue.sh` to log detailed output.
-2. **Verification checklist:**
-   - Connect to a public network containing a captive portal.
-   - Run the script and verify that it correctly identifies the active Wi-Fi profile.
-   - Verify that local DNS is successfully locked to the gateway/internal IPs.
-   - Verify that the portal loads in your default browser.
-   - Run with `--restore` and verify that your custom/previous DNS settings are correctly reapplied.
+### 1. Automated Unit Tests
+We have a unit test suite to validate helper functions (DNS parsing, VPN checking) in a mocked offline environment:
+```bash
+./test/test_parsing.sh
+```
+*Note: Make sure all tests pass before opening a PR. Sourcing functions from the main script allows testing logic in isolation.*
+
+### 2. Dry-Run & Debugging
+You can set the `DEBUG=true` flag inside `captive-portal-rescue.sh` to log detailed output.
+
+### 3. Manual Verification Checklist
+Because captive portals rely on local network setups and OS environment configurations (NetworkManager and systemd-resolved), manual verification is still required:
+- Connect to a public network containing a captive portal.
+- Run the script and verify that it correctly identifies the active Wi-Fi profile.
+- Verify that local DNS is successfully locked to the gateway/internal IPs.
+- Verify that the portal loads in your default browser.
+- Run with `--restore` and verify that your custom/previous DNS settings are correctly reapplied.
 
 ---
 
