@@ -64,6 +64,12 @@ captive-rescue --restore
 
 ---
 
+## Troubleshooting 🔍
+
+If you run into issues or the captive portal page still doesn't load after running the rescue script, see our comprehensive [Wi-Fi Captive Portal Troubleshooting Guide](docs/troubleshooting.md) for step-by-step diagnostic workflows, DNS leak checks, and data collection playbooks.
+
+---
+
 ## Requirements & Compatibility
 * **OS:** Linux (Fedora, Ubuntu, Debian, Arch Linux, etc.)
 * **Network Manager:** `NetworkManager` (`nmcli` command line utility)
@@ -71,3 +77,4 @@ captive-rescue --restore
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
