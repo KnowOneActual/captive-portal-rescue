@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructured `resolvectl` cache flushes to run conditionally only if the systemd-resolved service is active.
 - Updated `README.md` to recommend bash process substitution for curl pipelines to keep standard input open for interactive sudo prompts.
 
+### Fixed
+- Fixed script exiting silently when executing from standard input (e.g., `curl ... | bash`) by allowing an empty `BASH_SOURCE[0]` in the main execution check.
+- Fixed the quick run instruction in [README.md](README.md) to pipe the downloaded script into bash for execution instead of just printing it.
+
 ### Removed
 - Removed the legacy/temporary `temp-files/` directory containing the unpolished troubleshooting draft.
 
