@@ -1,5 +1,10 @@
 # Captive Portal Rescue 📶
 
+[![Lint](https://github.com/KnowOneActual/captive-portal-rescue/actions/workflows/lint.yml/badge.svg)](https://github.com/KnowOneActual/captive-portal-rescue/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/platform-linux-lightgrey.svg)](https://en.wikipedia.org/wiki/Linux)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+
 A smart, zero-configuration CLI tool to bypass/fix broken public Wi-Fi captive portals (such as libraries, hotels, and cafes) on Linux systems using NetworkManager and systemd-resolved.
 
 ## The Problem
