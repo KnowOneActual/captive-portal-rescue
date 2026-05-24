@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-24
+
 ### Added
 - Added connection status command option (`--status` or `-s`) to inspect active profile settings, VPN interfaces, and connectivity.
 - Added state-saving backups for connection DNS profiles; restoring now precisely reverts connection custom DNS settings back to their pre-rescue configuration.
