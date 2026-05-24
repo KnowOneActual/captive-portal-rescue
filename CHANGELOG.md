@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added a comprehensive [Wi-Fi Captive Portal Troubleshooting Guide](docs/troubleshooting.md) for Linux diagnostic flows, packet captures, and manual DNS probing.
 - Linked the troubleshooting guide in the [README.md](README.md) under a new **Troubleshooting** section.
+- Added GitHub Actions workflow to run `shellcheck` linting automatically on all pull requests and pushes to `main`.
+- Added [CONTRIBUTING.md](CONTRIBUTING.md) with guidelines for local development, ShellCheck setup, and PR flows.
+- Added [SECURITY.md](SECURITY.md) outlining vulnerability disclosure instructions.
+- Added GitHub issue templates for bug reports and feature requests.
+
 
 ### Removed
 - Removed the legacy/temporary `temp-files/` directory containing the unpolished troubleshooting draft.
