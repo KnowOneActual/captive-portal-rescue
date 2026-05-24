@@ -102,6 +102,7 @@ If you run into issues or the captive portal page still doesn't load after runni
 - **OS:** Linux (Fedora, Ubuntu, Debian, Arch Linux, etc.)
 - **Network Manager:** `NetworkManager` (`nmcli` command line utility)
 - **DNS Resolver:** `systemd-resolved` (`resolvectl` command line utility)
+- **Tested Environment:** Fedora Linux 44 (KDE Plasma Desktop Edition)
 
 ## License
 
