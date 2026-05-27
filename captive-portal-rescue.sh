@@ -48,7 +48,7 @@ detect_portal_domain() {
     local headers=""
     
     # Try up to 3 times to get headers, with a 2-second sleep between attempts if we get connection failure
-    for attempt in {1..3}; do
+    for _ in {1..3}; do
         headers=$(curl -4 -sD - -m 4 -o /dev/null http://neverssl.com 2>/dev/null)
         if [ -n "$headers" ]; then
             break
@@ -72,7 +72,7 @@ detect_portal_domain() {
         local domain
         domain=$(echo "$redirect_url" | grep -oP 'https?://\K[^/:]+')
         # Ensure it's a valid, non-neverssl domain
-        if [[ -n "$domain" && ! "$domain" =~ "neverssl.com" ]]; then
+        if [[ -n "$domain" && ! "$domain" =~ neverssl\.com ]]; then
             echo "$domain"
         fi
     fi
