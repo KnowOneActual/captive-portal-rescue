@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-27
+
 ### Added
 - Added dynamic captive portal domain detection by querying `http://neverssl.com` and parsing both `Location` headers and HTML meta tags.
 - Added DNS server probing using `dig` to verify which DNS servers successfully resolve the portal domain.
@@ -16,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored connectivity checks to use IPv4-only (`curl -4`) to avoid slow connection delays on networks with unreachable IPv6 setups.
 - Moved connectivity check to the start of the fix mode to exit early if already online.
 - Modified DNS configuration fallback to configure only the primary (first) RFC 1918 DNS server, preventing DNS poisoning from secondary resolvers.
+
+### Fixed
+- Fixed ShellCheck warnings (SC2034 and SC2076) in the main script.
 
 ## [1.1.0] - 2026-05-24
 
