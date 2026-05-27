@@ -42,6 +42,66 @@ filter_internal_dns() {
     echo "$internal_dns"
 }
 
+# Detect the captive portal domain name by querying neverssl.com
+detect_portal_domain() {
+    local redirect_url=""
+    local headers=""
+    
+    # Try up to 3 times to get headers, with a 2-second sleep between attempts if we get connection failure
+    for attempt in {1..3}; do
+        headers=$(curl -4 -sD - -m 4 -o /dev/null http://neverssl.com 2>/dev/null)
+        if [ -n "$headers" ]; then
+            break
+        fi
+        sleep 2
+    done
+    
+    # 1. Try to get Location header from GET request
+    redirect_url=$(echo "$headers" | grep -i '^Location:' | awk '{print $2}' | tr -d '\r')
+    
+    # 2. If empty, try to get from the body (e.g. meta refresh tag)
+    if [ -z "$redirect_url" ]; then
+        local body
+        body=$(curl -4 -s -m 4 http://neverssl.com 2>/dev/null)
+        # Search for refresh URL
+        redirect_url=$(echo "$body" | grep -oP '(?i)url=\Khttps?://[^"'\'' >]+' | head -n 1)
+    fi
+    
+    # 3. Extract the hostname from the URL
+    if [ -n "$redirect_url" ]; then
+        local domain
+        domain=$(echo "$redirect_url" | grep -oP 'https?://\K[^/:]+')
+        # Ensure it's a valid, non-neverssl domain
+        if [[ -n "$domain" && ! "$domain" =~ "neverssl.com" ]]; then
+            echo "$domain"
+        fi
+    fi
+}
+
+# Probe DNS servers to find which ones successfully resolve the portal domain
+probe_dns_servers() {
+    local dns_list="$1"
+    local portal_domain="$2"
+    local working_dns=""
+    
+    for dns in $dns_list; do
+        if [ -n "$portal_domain" ]; then
+            # Verify if the DNS server resolves the portal domain to an IP
+            local res
+            res=$(dig +"@$dns" "$portal_domain" +short +time=1 +tries=1 2>/dev/null)
+            if [ -n "$res" ]; then
+                if [ -z "$working_dns" ]; then
+                    working_dns="$dns"
+                else
+                    working_dns="$working_dns,$dns"
+                fi
+            fi
+        fi
+    done
+    echo "$working_dns"
+}
+
+
 # Detect active VPN interfaces
 detect_vpn_interfaces() {
     if command -v ip &>/dev/null; then
@@ -113,9 +173,9 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
         fi
         
         echo "🌐 Connectivity Check:"
-        HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
+        HTTP_STATUS=$(curl -4 -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
         if [ "$HTTP_STATUS" = "200" ]; then
-            CANARY=$(curl -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
+            CANARY=$(curl -4 -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
             if [[ "$CANARY" =~ "success" ]]; then
                 echo "   - Internet Access:   ONLINE"
             else
@@ -152,6 +212,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
         
         echo "🔄 Re-activating connection to apply changes..."
         nmcli connection up "$ACTIVE_CON_UUID"
+        echo "⏳ Waiting for connection to settle..."
+        sleep 3
         
         if command -v resolvectl &>/dev/null && systemctl is-active --quiet systemd-resolved 2>/dev/null; then
             echo "🧹 Flushing systemd-resolved cache (requires sudo)..."
@@ -166,6 +228,18 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
 
     echo "📶 Active Wi-Fi: '$ACTIVE_CON_NAME' (UUID: $ACTIVE_CON_UUID) on device '$DEVICE_NAME'"
 
+    # 1. Check if we are already online
+    echo "🌐 Checking connection status..."
+    HTTP_STATUS=$(curl -4 -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
+
+    if [ "$HTTP_STATUS" = "200" ]; then
+        CANARY=$(curl -4 -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
+        if [[ "$CANARY" =~ "success" ]]; then
+            echo "✅ You are already online!"
+            exit 0
+        fi
+    fi
+
     # 2. Extract DHCP DNS servers from the lease
     DHCP_DNS=$(nmcli -g DHCP4.OPTION device show "$DEVICE_NAME" 2>/dev/null | grep -oP '(?:^|[|])\s*domain_name_servers = \K[^|]+' | xargs)
 
@@ -173,7 +247,28 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
         echo "📥 DHCP raw DNS servers: $DHCP_DNS"
     fi
 
-    INTERNAL_DNS=$(filter_internal_dns "$DHCP_DNS")
+    # Try to dynamically detect captive portal domain and probe DNS
+    PORTAL_DOMAIN=$(detect_portal_domain)
+    INTERNAL_DNS=""
+    if [ -n "$PORTAL_DOMAIN" ]; then
+        echo "🌐 Detected captive portal domain: $PORTAL_DOMAIN"
+        INTERNAL_DNS=$(probe_dns_servers "$DHCP_DNS" "$PORTAL_DOMAIN")
+    fi
+
+    if [ -n "$INTERNAL_DNS" ]; then
+        # Limit to the first working DNS to avoid any potential resolution ordering issues
+        INTERNAL_DNS=$(echo "$INTERNAL_DNS" | cut -d, -f1)
+        echo "🔍 Found working DNS server for portal: $INTERNAL_DNS"
+    else
+        if [ -n "$PORTAL_DOMAIN" ]; then
+            echo "⚠️ Probed DNS servers failed to resolve '$PORTAL_DOMAIN'. Falling back to primary RFC 1918 DNS."
+        else
+            echo "ℹ️ Captive portal domain could not be detected. Falling back to primary RFC 1918 DNS."
+        fi
+        INTERNAL_DNS=$(filter_internal_dns "$DHCP_DNS")
+        # Take only the first one to avoid DNS poisoning from secondary resolvers
+        INTERNAL_DNS=$(echo "$INTERNAL_DNS" | cut -d, -f1)
+    fi
 
     if [ -z "$INTERNAL_DNS" ]; then
         echo "⚠️ No internal DNS servers found in DHCP lease! Falling back to Gateway."
@@ -184,7 +279,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
         INTERNAL_DNS="$GATEWAY_IP"
     fi
 
-    echo "🔍 Filtered internal DNS servers to use: $INTERNAL_DNS"
+    echo "🔍 Selected DNS servers to use: $INTERNAL_DNS"
 
     # 3. Backup current settings before modifying
     mkdir -p "$STATE_DIR"
@@ -211,6 +306,8 @@ EOF
 
     echo "🔄 Re-activating connection to apply changes..."
     nmcli connection up "$ACTIVE_CON_UUID"
+    echo "⏳ Waiting for connection to settle..."
+    sleep 3
 
     # 5. Cleanup any broken custom hosts mapping from older workarounds
     for host in "${CLEANUP_HOSTS[@]}"; do
@@ -236,10 +333,10 @@ EOF
 
     # 8. Diagnostics and Portal Trigger
     echo "🌐 Checking connection status..."
-    HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
+    HTTP_STATUS=$(curl -4 -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
 
     if [ "$HTTP_STATUS" = "200" ]; then
-        CANARY=$(curl -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
+        CANARY=$(curl -4 -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
         if [[ "$CANARY" =~ "success" ]]; then
             echo "✅ You are already online!"
             exit 0
