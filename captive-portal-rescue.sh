@@ -46,33 +46,44 @@ filter_internal_dns() {
 detect_portal_domain() {
     local redirect_url=""
     local headers=""
+    local curl_opts=("-4" "-s")
+    if [ -n "$DEVICE_NAME" ]; then
+        curl_opts+=("--interface" "$DEVICE_NAME")
+    fi
     
     # Try up to 3 times to get headers, with a 2-second sleep between attempts if we get connection failure
     for _ in {1..3}; do
-        headers=$(curl -4 -sD - -m 4 -o /dev/null http://neverssl.com 2>/dev/null)
+        headers=$(curl "${curl_opts[@]}" -D - -m 4 -o /dev/null http://neverssl.com 2>/dev/null)
         if [ -n "$headers" ]; then
             break
         fi
         sleep 2
     done
     
-    # 1. Try to get Location header from GET request
+    # 1. Try to get Location header from GET request to neverssl.com
     redirect_url=$(echo "$headers" | grep -i '^Location:' | awk '{print $2}' | tr -d '\r')
     
-    # 2. If empty, try to get from the body (e.g. meta refresh tag)
+    # 2. If empty, try example.com as fallback in case neverssl.com is whitelisted
+    if [ -z "$redirect_url" ]; then
+        local headers_fallback
+        headers_fallback=$(curl "${curl_opts[@]}" -D - -m 4 -o /dev/null http://example.com 2>/dev/null)
+        redirect_url=$(echo "$headers_fallback" | grep -i '^Location:' | awk '{print $2}' | tr -d '\r')
+    fi
+    
+    # 3. If still empty, try to get from the body of neverssl.com (e.g. meta refresh tag)
     if [ -z "$redirect_url" ]; then
         local body
-        body=$(curl -4 -s -m 4 http://neverssl.com 2>/dev/null)
+        body=$(curl "${curl_opts[@]}" -m 4 http://neverssl.com 2>/dev/null)
         # Search for refresh URL
         redirect_url=$(echo "$body" | grep -oP '(?i)url=\Khttps?://[^"'\'' >]+' | head -n 1)
     fi
     
-    # 3. Extract the hostname from the URL
+    # 4. Extract the hostname from the URL
     if [ -n "$redirect_url" ]; then
         local domain
         domain=$(echo "$redirect_url" | grep -oP 'https?://\K[^/:]+')
-        # Ensure it's a valid, non-neverssl domain
-        if [[ -n "$domain" && ! "$domain" =~ neverssl\.com ]]; then
+        # Ensure it's a valid, non-neverssl and non-example domain
+        if [[ -n "$domain" && ! "$domain" =~ neverssl\.com && ! "$domain" =~ example\.com && ! "$domain" =~ example\.org ]]; then
             echo "$domain"
         fi
     fi
@@ -172,17 +183,27 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
             echo "🔒 VPN Interfaces:     None active"
         fi
         
-        echo "🌐 Connectivity Check:"
-        HTTP_STATUS=$(curl -4 -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
-        if [ "$HTTP_STATUS" = "200" ]; then
-            CANARY=$(curl -4 -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
-            if [[ "$CANARY" =~ "success" ]]; then
-                echo "   - Internet Access:   ONLINE"
-            else
-                echo "   - Internet Access:   PORTAL REDIRECTED / HIJACKED (Action required)"
-            fi
+        echo "🌐 Connectivity Check on $DEVICE_NAME:"
+        curl_opts=("-4" "-s")
+        if [ -n "$DEVICE_NAME" ]; then
+            curl_opts+=("--interface" "$DEVICE_NAME")
+        fi
+        
+        HTTPS_STATUS=$(curl "${curl_opts[@]}" -o /dev/null -w "%{http_code}" --connect-timeout 3 https://clients3.google.com/generate_204)
+        if [ "$HTTPS_STATUS" = "204" ]; then
+            echo "   - Internet Access:   ONLINE"
         else
-            echo "   - Internet Access:   OFFLINE (HTTP Status: $HTTP_STATUS or connection timeout)"
+            HTTP_STATUS=$(curl "${curl_opts[@]}" -o /dev/null -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
+            if [ "$HTTP_STATUS" = "200" ]; then
+                CANARY=$(curl "${curl_opts[@]}" --connect-timeout 3 http://detectportal.firefox.com/success.txt)
+                if [[ "$CANARY" =~ "success" ]]; then
+                    echo "   - Internet Access:   PORTAL WHITING/LIMITED (HTTPS blocked, Action required)"
+                else
+                    echo "   - Internet Access:   PORTAL REDIRECTED / HIJACKED (Action required)"
+                fi
+            else
+                echo "   - Internet Access:   OFFLINE (HTTPS Status: $HTTPS_STATUS, HTTP Status: $HTTP_STATUS)"
+            fi
         fi
         echo "=================================================="
         exit 0
@@ -230,14 +251,15 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
 
     # 1. Check if we are already online
     echo "🌐 Checking connection status..."
-    HTTP_STATUS=$(curl -4 -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
+    curl_opts=("-4" "-s")
+    if [ -n "$DEVICE_NAME" ]; then
+        curl_opts+=("--interface" "$DEVICE_NAME")
+    fi
+    HTTPS_STATUS=$(curl "${curl_opts[@]}" -o /dev/null -w "%{http_code}" --connect-timeout 3 https://clients3.google.com/generate_204)
 
-    if [ "$HTTP_STATUS" = "200" ]; then
-        CANARY=$(curl -4 -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
-        if [[ "$CANARY" =~ "success" ]]; then
-            echo "✅ You are already online!"
-            exit 0
-        fi
+    if [ "$HTTPS_STATUS" = "204" ]; then
+        echo "✅ You are already online!"
+        exit 0
     fi
 
     # 2. Extract DHCP DNS servers from the lease
@@ -333,14 +355,15 @@ EOF
 
     # 8. Diagnostics and Portal Trigger
     echo "🌐 Checking connection status..."
-    HTTP_STATUS=$(curl -4 -o /dev/null -s -w "%{http_code}" --connect-timeout 3 http://neverssl.com)
+    curl_opts=("-4" "-s")
+    if [ -n "$DEVICE_NAME" ]; then
+        curl_opts+=("--interface" "$DEVICE_NAME")
+    fi
+    HTTPS_STATUS=$(curl "${curl_opts[@]}" -o /dev/null -w "%{http_code}" --connect-timeout 3 https://clients3.google.com/generate_204)
 
-    if [ "$HTTP_STATUS" = "200" ]; then
-        CANARY=$(curl -4 -s --connect-timeout 3 http://detectportal.firefox.com/success.txt)
-        if [[ "$CANARY" =~ "success" ]]; then
-            echo "✅ You are already online!"
-            exit 0
-        fi
+    if [ "$HTTPS_STATUS" = "204" ]; then
+        echo "✅ You are already online!"
+        exit 0
     fi
 
     echo "🚀 Triggering captive portal via http://neverssl.com..."

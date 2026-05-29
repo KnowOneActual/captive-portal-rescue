@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-29
+
+### Changed
+- Refactored connectivity checks in status mode, default mode, and diagnostic mode to use HTTPS (`https://clients3.google.com/generate_204`) bound to the active wireless interface (`--interface`) to prevent false positives when a VPN is active or HTTP check domains are whitelisted.
+- Improved status check (`-s`) output to report detailed connectivity states: `ONLINE`, `PORTAL WHITING/LIMITED`, `PORTAL REDIRECTED / HIJACKED`, and `OFFLINE`.
+
+### Fixed
+- Fixed a bug where `captive-portal-rescue.sh` incorrectly identified the connection as online and exited early on networks that whitelist HTTP checks or when a VPN is active.
+- Fixed `detect_portal_domain` failing to find the portal domain on networks that whitelist `neverssl.com` by adding an interface-bound fallback query to `example.com`.
+
 ## [1.2.0] - 2026-05-27
 
 ### Added
