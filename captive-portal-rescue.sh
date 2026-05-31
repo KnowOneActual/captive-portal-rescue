@@ -22,6 +22,7 @@ show_help() {
     echo "Options:"
     echo "  -r, --restore    Restore the active Wi-Fi connection to its original DNS configuration"
     echo "  -s, --status     Show current connection details, custom DNS state, and VPN info"
+    echo "  -p, --plan       Dry-run: show what actions and configuration changes would be applied"
     echo "  -h, --help       Show this help message"
     exit 0
 }
@@ -124,10 +125,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
     # Parse options
     RESTORE_MODE=false
     STATUS_MODE=false
+    PLAN_MODE=false
     while [[ "$#" -gt 0 ]]; do
         case $1 in
             -r|--restore) RESTORE_MODE=true; shift ;;
             -s|--status) STATUS_MODE=true; shift ;;
+            -p|--plan) PLAN_MODE=true; shift ;;
             -h|--help) show_help ;;
             *) echo "Unknown option: $1"; show_help ;;
         esac
@@ -304,45 +307,65 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
     echo "🔍 Selected DNS servers to use: $INTERNAL_DNS"
 
     # 3. Backup current settings before modifying
-    mkdir -p "$STATE_DIR"
-    if [ ! -f "$STATE_FILE" ]; then
-        echo "💾 Backing up current connection DNS configuration..."
-        ORIG_IPV4_IGNORE=$(nmcli -g ipv4.ignore-auto-dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "no")
-        ORIG_IPV4_DNS=$(nmcli -g ipv4.dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "")
-        ORIG_IPV6_IGNORE=$(nmcli -g ipv6.ignore-auto-dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "no")
-        ORIG_IPV6_DNS=$(nmcli -g ipv6.dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "")
-        
-        cat <<EOF > "$STATE_FILE"
+    if [ "$PLAN_MODE" = true ]; then
+        echo "💾 [PLAN] Would backup current connection DNS configuration to: $STATE_FILE"
+    else
+        mkdir -p "$STATE_DIR"
+        if [ ! -f "$STATE_FILE" ]; then
+            echo "💾 Backing up current connection DNS configuration..."
+            ORIG_IPV4_IGNORE=$(nmcli -g ipv4.ignore-auto-dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "no")
+            ORIG_IPV4_DNS=$(nmcli -g ipv4.dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "")
+            ORIG_IPV6_IGNORE=$(nmcli -g ipv6.ignore-auto-dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "no")
+            ORIG_IPV6_DNS=$(nmcli -g ipv6.dns connection show "$ACTIVE_CON_UUID" 2>/dev/null || echo "")
+            
+            cat <<EOF > "$STATE_FILE"
 ORIG_IPV4_IGNORE='$ORIG_IPV4_IGNORE'
 ORIG_IPV4_DNS='$ORIG_IPV4_DNS'
 ORIG_IPV6_IGNORE='$ORIG_IPV6_IGNORE'
 ORIG_IPV6_DNS='$ORIG_IPV6_DNS'
 EOF
-    else
-        echo "ℹ️ State file already exists. Skipping backup to preserve original pre-rescue configuration."
+        else
+            echo "ℹ️ State file already exists. Skipping backup to preserve original pre-rescue configuration."
+        fi
     fi
 
     # 4. Apply internal DNS and disable automatic DNS for both IPv4 and IPv6 to prevent leaks
-    echo "⚙️ Configuring NetworkManager to ignore public DNS..."
-    nmcli connection modify "$ACTIVE_CON_UUID" ipv4.ignore-auto-dns yes ipv4.dns "$INTERNAL_DNS" ipv6.ignore-auto-dns yes
+    if [ "$PLAN_MODE" = true ]; then
+        echo "⚙️ [PLAN] Would modify NetworkManager connection '$ACTIVE_CON_NAME' ($ACTIVE_CON_UUID):"
+        echo "          ipv4.ignore-auto-dns=yes"
+        echo "          ipv4.dns='$INTERNAL_DNS'"
+        echo "          ipv6.ignore-auto-dns=yes"
+        echo "🔄 [PLAN] Would re-activate connection: nmcli connection up \"$ACTIVE_CON_UUID\""
+    else
+        echo "⚙️ Configuring NetworkManager to ignore public DNS..."
+        nmcli connection modify "$ACTIVE_CON_UUID" ipv4.ignore-auto-dns yes ipv4.dns "$INTERNAL_DNS" ipv6.ignore-auto-dns yes
 
-    echo "🔄 Re-activating connection to apply changes..."
-    nmcli connection up "$ACTIVE_CON_UUID"
-    echo "⏳ Waiting for connection to settle..."
-    sleep 3
+        echo "🔄 Re-activating connection to apply changes..."
+        nmcli connection up "$ACTIVE_CON_UUID"
+        echo "⏳ Waiting for connection to settle..."
+        sleep 3
+    fi
 
     # 5. Cleanup any broken custom hosts mapping from older workarounds
     for host in "${CLEANUP_HOSTS[@]}"; do
         if grep -q "$host" /etc/hosts; then
-            echo "🧹 Cleaning up legacy portal mapping '$host' from /etc/hosts (requires sudo)..."
-            sudo sed -i "/$host/d" /etc/hosts
+            if [ "$PLAN_MODE" = true ]; then
+                echo "🧹 [PLAN] Would clean up legacy portal mapping '$host' from /etc/hosts (requires sudo)"
+            else
+                echo "🧹 Cleaning up legacy portal mapping '$host' from /etc/hosts (requires sudo)..."
+                sudo sed -i "/$host/d" /etc/hosts
+            fi
         fi
     done
 
     # 6. Flush systemd-resolved
     if command -v resolvectl &>/dev/null && systemctl is-active --quiet systemd-resolved 2>/dev/null; then
-        echo "🧹 Flushing systemd-resolved cache (requires sudo)..."
-        sudo resolvectl flush-caches
+        if [ "$PLAN_MODE" = true ]; then
+            echo "🧹 [PLAN] Would flush systemd-resolved cache (requires sudo): resolvectl flush-caches"
+        else
+            echo "🧹 Flushing systemd-resolved cache (requires sudo)..."
+            sudo resolvectl flush-caches
+        fi
     fi
 
     # 7. Check VPN status
@@ -354,6 +377,13 @@ EOF
     fi
 
     # 8. Diagnostics and Portal Trigger
+    if [ "$PLAN_MODE" = true ]; then
+        echo "🚀 [PLAN] Would trigger captive portal redirection via http://neverssl.com"
+        echo "💡 Tip: If it fails, ensure 'DNS over HTTPS' is OFF in your browser."
+        echo "✅ Plan complete. No changes were made to your system."
+        exit 0
+    fi
+
     echo "🌐 Checking connection status..."
     curl_opts=("-4" "-s")
     if [ -n "$DEVICE_NAME" ]; then

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-31
+
+### Added
+- Added a `--plan` / `-p` (dry-run) option to preview NetworkManager connection modifications, hosts cleanup, and cache flushes without applying changes to the system.
+
 ## [1.2.1] - 2026-05-29
 
 ### Changed

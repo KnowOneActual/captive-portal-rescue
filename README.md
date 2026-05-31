@@ -79,6 +79,16 @@ captive-rescue --status
 
 _(Or `./captive-portal-rescue.sh --status` / `-s`)._
 
+### 📋 Dry-Run / Preview Actions
+
+Preview exactly what actions, backups, and configuration modifications the script would perform on your system without applying them:
+
+```bash
+captive-rescue --plan
+```
+
+_(Or `./captive-portal-rescue.sh --plan` / `-p`)._
+
 ### 🔄 Restore Custom Settings
 
 Once you successfully log in and are online, restore your original DNS and connection settings:
@@ -88,6 +98,12 @@ captive-rescue --restore
 ```
 
 _(Or `./captive-portal-rescue.sh --restore` / `-r`)._
+
+---
+
+## Roadmap 🗺️
+
+To see what features and diagnostic improvements are planned for future releases, check the [Roadmap](ROADMAP.md).
 
 ---
 
