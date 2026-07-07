@@ -126,11 +126,13 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ -z "${BASH_SOURCE[0]}" ]]; then
     RESTORE_MODE=false
     STATUS_MODE=false
     PLAN_MODE=false
+    NO_OPEN=false
     while [[ "$#" -gt 0 ]]; do
         case $1 in
             -r|--restore) RESTORE_MODE=true; shift ;;
             -s|--status) STATUS_MODE=true; shift ;;
             -p|--plan) PLAN_MODE=true; shift ;;
+            -n|--no-open) NO_OPEN=true; shift ;;
             -h|--help) show_help ;;
             *) echo "Unknown option: $1"; show_help ;;
         esac
@@ -396,7 +398,11 @@ EOF
         exit 0
     fi
 
-    echo "🚀 Triggering captive portal via http://neverssl.com..."
-    xdg-open "http://neverssl.com" 2>/dev/null || echo "👉 Please open http://neverssl.com manually."
+    if [ "$NO_OPEN" = true ]; then
+        echo "🚀 Captive portal rescue complete. Browser launch deferred to frontend."
+    else
+        echo "🚀 Triggering captive portal via http://neverssl.com..."
+        xdg-open "http://neverssl.com" 2>/dev/null || echo "👉 Please open http://neverssl.com manually."
+    fi
     echo "💡 Tip: If it fails, ensure 'DNS over HTTPS' is OFF in your browser."
 fi

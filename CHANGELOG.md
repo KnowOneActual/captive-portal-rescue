@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-07
+
+### Added
+- Added a `--no-open` / `-n` flag to skip triggering a default browser via `xdg-open` at the end of a successful rescue execution, allowing graphical frontends to control browser launches in private/incognito mode.
+
 ## [1.3.0] - 2026-05-31
 
 ### Added
